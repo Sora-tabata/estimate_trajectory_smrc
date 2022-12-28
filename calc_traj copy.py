@@ -87,46 +87,43 @@ class CalcTraj():
         t_orb = L[:, 0]  # /1000000000
         x_orb = L[:, 3]
         y_orb = L[:, 1]
-        z_orb = -L[:, 2]
-        q0 = L[:, 4]#7
-        q1 = L[:, 5]#6
-        q2 = L[:, 6]#4
-        q3 = L[:, 7]#5
+        z_orb = L[:, 2]
+        q0 = L[:, 7]
+        q1 = L[:, 6]
+        q2 = L[:, 4]
+        q3 = L[:, 5]
         r1 = np.zeros(len(q0))
         p1 = np.zeros(len(q0))
         ya1 = np.zeros(len(q0))
         for i in range(len(q0)):
             r1[i] = np.rad2deg(
                 np.arctan(2 * (q0[i] * q1[i] + q2[i] * q3[i]) / (q0[i] ** 2 - q1[i] ** 2 - q2[i] ** 2 + q3[i] ** 2)))
-            p1[i] = np.rad2deg(np.arcsin(2 * (q0[i] * q2[i] - q1[i] * q3[i])))
+            p1[i] = -np.rad2deg(np.arcsin(2 * (q0[i] * q2[i] - q1[i] * q3[i])))
             ya1[i] = np.rad2deg(
                 np.arctan(2 * (q0[i] * q3[i] + q2[i] * q1[i]) / (q0[i] ** 2 + q1[i] ** 2 - q2[i] ** 2 - q3[i] ** 2)))
-        f1 = interpolate.interp1d(t_orb, r1, kind="linear", fill_value=(r1[0], r1[len(r1)-1]),bounds_error=False)#(r1[0], r1[len(r1)-1])
-        f2 = interpolate.interp1d(t_orb, ya1, kind="linear", fill_value=(ya1[0], ya1[len(ya1)-1]),bounds_error=False)
-        f3 = interpolate.interp1d(t_orb, p1, kind="linear", fill_value=(p1[0], p1[len(p1)-1]),bounds_error=False)
+        f1 = interpolate.interp1d(t_orb, r1, kind="linear", fill_value="extrapolate")
+        f2 = interpolate.interp1d(t_orb, ya1, kind="linear", fill_value="extrapolate")
+        f3 = interpolate.interp1d(t_orb, p1, kind="linear", fill_value="extrapolate")
         f4 = interpolate.interp1d(t_orb, x_orb, kind="linear", fill_value="extrapolate")
         f5 = interpolate.interp1d(t_orb, y_orb, kind="linear", fill_value="extrapolate")
         f6 = interpolate.interp1d(t_orb, z_orb, kind="linear", fill_value="extrapolate")
+        ya1_re = f2(time)
+        p1_re = f3(time)
         r1_re = f1(time)
-        ya1_re = -f3(time)
-        p1_re = f2(time)
-        
         x_re = f4(time)
         y_re = f5(time)
         z_re = f6(time)
         l_orb = np.zeros(len(time))
         L_orb = 0
-        distance = []
         for n in range(len(x_re)-1):
             l_orb[n] = np.sqrt((x_re[n + 1] - x_re[n]) ** 2 + (y_re[n + 1] - y_re[n]) ** 2 + (z_re[n + 1] - z_re[n]) ** 2)
             L_orb = L_orb + l_orb[n]
-            distance.append(L_orb)
 
         k_v=groundtruth[0]/L_orb
         x_vf = x_re * k_v
         y_vf = y_re * k_v
         z_vf = z_re * k_v
-        return y_vf-y_vf[0], x_vf-x_vf[0], z_vf-z_vf[0], r1_re, p1_re, ya1_re, t_orb, x_re, y_re, z_re, k_v, np.array(distance)*k_v
+        return x_vf-x_vf[0], y_vf-y_vf[0], z_vf-z_vf[0], r1_re, p1_re, ya1_re, t_orb, x_re, y_re, z_re, k_v
 
     @staticmethod
     def rotationMatrixToEulerAngles(self, R):
@@ -143,7 +140,7 @@ class CalcTraj():
             roll = math.atan2(-R[2, 0], sy)
             yaw = 0
 
-        return np.array([-roll, -pitch, yaw])
+        return np.array([roll, pitch, yaw])
     
     def calcOpensfm(self, groundtruth, json_file):
         time = self.Nx
@@ -171,26 +168,23 @@ class CalcTraj():
             except KeyError:
                 #print("エラーです", i, j)
                 continue
-        #print(roll_est[0], pitch_est[0], yaw_est[0])
         t = np.vstack([x_est, y_est, z_est]).T
         R3 = []
         for i in range(len(name_data)):
-            R3.append(np.array(cv2.Rodrigues(np.array([roll_est[i], pitch_est[i], yaw_est[i]]))[0]).T)
+            R3.append(cv2.Rodrigues(np.array([roll_est[i], pitch_est[i], yaw_est[i]]))[0])
         xyz = []
         for i in range(len(name_data)):
-            xyz.append(-np.dot(np.array(R3[i]).T.T, t[i]))
+            xyz.append(-np.dot(np.array(R3[i]).T, t[i]))
         x_sfm = np.array(xyz)[:, 0]
         y_sfm = np.array(xyz)[:, 1]
         z_sfm = np.array(xyz)[:, 2]
         l_sfm = np.zeros(len(name_data)-1)
         L_sfm = 0
-        distance = []
 
         for n in range(len(name_data)-1):
             l_sfm[n] = np.sqrt(
                 (x_sfm[n + 1] - x_sfm[n]) ** 2 + (y_sfm[n + 1] - y_sfm[n]) ** 2 + (z_sfm[n + 1] - z_sfm[n]) ** 2)
             L_sfm = L_sfm + l_sfm[n]
-            distance.append(L_sfm)
         k_sfm = groundtruth[0] / L_sfm
         #y_ = np.vstack([groundtruth[2], groundtruth[3], groundtruth[4]]).T
         x_ = k_sfm*np.vstack([x_sfm[:], y_sfm[:], z_sfm[:]]).T  # colmap
@@ -206,32 +200,32 @@ class CalcTraj():
         ya1 = np.zeros(len(name_data))
         #角度の計算
 
-        #R4 = R3 @ np.linalg.inv(R3)
+        R4 = R3 @ np.linalg.inv(R3)
         for i in range(len(name_data)):
             eul = np.rad2deg(CalcTraj.rotationMatrixToEulerAngles(self, R3[i]))
             r1[i] = -eul[0]
-            p1[i] = eul[1] - 180
+            p1[i] = eul[1] % 360 - 180
             ya1[i] = -eul[2]
-        R_ = []
-        return x_[:, 0]-x_[:, 0][0], x_[:, 1]-x_[:, 1][0], r1, p1+90,ya1, t*k_sfm, R3,k_sfm*np.array(xyz), R_, x_[:, 2]-x_[:, 2][0], np.array(distance)*k_sfm
+
+        return x_[:, 0]-x_[:, 0][0], x_[:, 1]-x_[:, 1][0], r1-r1[0], p1-p1[0],ya1-ya1[0], t*k_sfm, R3,np.array(xyz)*k_sfm
 
     
     def calcDroidslam(self, groundtruth, L):
         time = self.Nx
-        #quotient = len(groundtruth[0]) // len(time)
-        #remainder = len(groundtruth[0]) % len(time)
         t_orb = L[:, 0]
-        '''
+        t_x = interpolate.interp1d(t_orb, L[:, 1], kind="quadratic",fill_value="extrapolate")(time)#7##5
+        t_y = interpolate.interp1d(t_orb, L[:, 2], kind="quadratic",fill_value="extrapolate")(time)#7##5
+        t_z = interpolate.interp1d(t_orb, L[:, 3], kind="quadratic",fill_value="extrapolate")(time)#7##5
+        
         q0 = interpolate.interp1d(t_orb, L[:, 4], kind="quadratic",fill_value="extrapolate")(time)#7##5
         q1 = interpolate.interp1d(t_orb, L[:, 7], kind="quadratic",fill_value="extrapolate")(time)#6##6
         q2 = interpolate.interp1d(t_orb, L[:, 6], kind="quadratic",fill_value="extrapolate")(time)#4##7
         q3 = interpolate.interp1d(t_orb, L[:, 5], kind="quadratic",fill_value="extrapolate")(time)#5##4
-        '''
+
 
         t_x = L[:, 1]
         t_y = L[:, 2]
         t_z = L[:, 3]
-        
         q0 = L[:, 4]
         q1 = L[:, 7]
         q2 = L[:, 6]
@@ -241,65 +235,115 @@ class CalcTraj():
         for i in range(len(L)):
             R.append([[q0[i] ** 2 + q1[i] ** 2 - q2[i] ** 2 - q3[i] ** 2, 2 * (q1[i] * q2[i] - q0[i] * q3[i]),
                     2 * (q0[i] * q2[i] + q1[i] * q3[i])],
-                    [2 * (q0[i] * q3[i] + q1[i] * q2[i]), q0[i] ** 2 - q1[i] ** 2 + q2[i] ** 2 - q3[i] ** 2,
+                    [-2 * (q0[i] * q3[i] + q1[i] * q2[i]), q0[i] ** 2 - q1[i] ** 2 + q2[i] ** 2 - q3[i] ** 2,
                     2 * (-q0[i] * q1[i] + q2[i] * q3[i])],
                     [2 * (q1[i] * q3[i] - q0[i] * q2[i]), 2 * (q2[i] * q3[i] + q0[i] * q1[i]),
                     q0[i] ** 2 - q1[i] ** 2 - q2[i] ** 2 + q3[i] ** 2]])
-        R3 = R.copy()
         t = np.vstack([t_z, t_y, t_x]).T
-        #t = np.vstack([t_z, t_y, t_x]).T
         xyz = []
         for i in range(len(L)):
             xyz.append(-np.dot(np.array(R[i]).T, t[i]))
         xyz = np.array(xyz)
-        x_droid = interpolate.interp1d(t_orb*(1/14), xyz[:, 0], kind="linear",fill_value="extrapolate")(time)#7##5
-        y_droid = interpolate.interp1d(t_orb*(1/14), xyz[:, 1], kind="linear",fill_value="extrapolate")(time)#7##5
-        z_droid = interpolate.interp1d(t_orb*(1/14), xyz[:, 2], kind="linear",fill_value="extrapolate")(time)#7##5
-        '''
         x_droid = xyz[:, 0]
         y_droid = xyz[:, 1]
         z_droid = xyz[:, 2]
-        '''
-        t_ = np.vstack([z_droid, x_droid, y_droid]).T
-        t__ = np.vstack([x_droid, y_droid, z_droid]).T
-        l_sfm = np.zeros(len(time)-1)
+        l_sfm = np.zeros(len(t)-1)
         L_sfm = 0
-        distance = []
 
-        for n in range(len(time)-1):
+        for n in range(len(L)-1):
             l_sfm[n] = np.sqrt(
                 (x_droid[n + 1] - x_droid[n]) ** 2 + (y_droid[n + 1] - y_droid[n]) ** 2 + (z_droid[n + 1] - z_droid[n]) ** 2)
             L_sfm = L_sfm + l_sfm[n]
-            distance.append(L_sfm)
         k_sfm = groundtruth[0] / L_sfm
         #y_ = np.vstack([groundtruth[0][remainder::quotient], groundtruth[1][remainder::quotient], np.zeros(len(groundtruth[0][remainder::quotient]))]).T
         x_ = k_sfm*np.vstack([z_droid[:], x_droid[:], y_droid[:]]).T  # colmap
-        #x_ = k_sfm*np.vstack([z_droid[:], y_droid[:], x_droid[:]]).T
+
         #x_ = x_ - x_.mean(axis=0)  # genten
         #y_ = y_ - y_.mean(axis=0)
         #U, S, V = np.linalg.svd(np.diff(x_, axis=0).T @ np.diff(y_, axis=0))
         #R = V.T @ U.T
         #x_ = (R @ x_.T).T
-        #droid_x = interpolate.interp1d(t_orb*(1/14), x_[:, 0], kind="linear",fill_value="extrapolate")(time)#7##5
-        #droid_y = interpolate.interp1d(t_orb*(1/14), x_[:, 1], kind="linear",fill_value="extrapolate")(time)#7##5
-        q0 = L[:, 4]#7
-        q1 = L[:, 5]#6
-        q2 = L[:, 6]#4
-        q3 = L[:, 7]#5
+
+
+        return x_[:, 0]-x_[:, 0][0], x_[:, 1]-x_[:, 1][0]
+
+    def calcColmap(self, groundtruth, L1):
+        L2 = L1[0::2]
+        L = L2[np.argsort(L2[:,0])]
+        print(L)
+        q0 = L[:, 1]
+        q1 = L[:, 2]
+        q2 = L[:, 3]
+        q3 = L[:, 4]
         r1 = np.zeros(len(q0))
         p1 = np.zeros(len(q0))
         ya1 = np.zeros(len(q0))
+        R = []
+        for i in range(len(L)):
+            R.append([[q0[i] ** 2 + q1[i] ** 2 - q2[i] ** 2 - q3[i] ** 2, 2 * (q1[i] * q2[i] - q0[i] * q3[i]),
+                    2 * (q0[i] * q2[i] + q1[i] * q3[i])],
+                    [2 * (q0[i] * q3[i] + q1[i] * q2[i]), q0[i] ** 2 - q1[i] ** 2 + q2[i] ** 2 - q3[i] ** 2,
+                    2 * (-q0[i] * q1[i] + q2[i] * q3[i])],
+                    [2 * (q1[i] * q3[i] - q0[i] * q2[i]), 2 * (q2[i] * q3[i] + q0[i] * q1[i]),
+                    q0[i] ** 2 - q1[i] ** 2 - q2[i] ** 2 + q3[i] ** 2]])
+        q0 = L[:, 4]
+        q1 = L[:, 3]
+        q2 = L[:, 1]
+        q3 = L[:, 2]
         for i in range(len(q0)):
             r1[i] = np.rad2deg(
                 np.arctan(2 * (q0[i] * q1[i] + q2[i] * q3[i]) / (q0[i] ** 2 - q1[i] ** 2 - q2[i] ** 2 + q3[i] ** 2)))
             p1[i] = np.rad2deg(np.arcsin(2 * (q0[i] * q2[i] - q1[i] * q3[i])))
             ya1[i] = np.rad2deg(
                 np.arctan(2 * (q0[i] * q3[i] + q2[i] * q1[i]) / (q0[i] ** 2 + q1[i] ** 2 - q2[i] ** 2 - q3[i] ** 2)))
-        f1 = interpolate.interp1d(t_orb*(1/14), r1, kind="linear", fill_value=(r1[0], r1[len(r1)-1]),bounds_error=False)#(r1[0], r1[len(r1)-1])
-        f2 = interpolate.interp1d(t_orb*(1/14), ya1, kind="linear", fill_value=(ya1[0], ya1[len(ya1)-1]),bounds_error=False)
-        f3 = interpolate.interp1d(t_orb*(1/14), p1, kind="linear", fill_value=(p1[0], p1[len(p1)-1]),bounds_error=False)
-        r1_re = -f1(time)
-        ya1_re = f3(time)
-        p1_re = -f2(time)
-        return -(x_[:, 0]-x_[:, 0][0]), x_[:, 1]-x_[:, 1][0], x_[:, 2]-x_[:, 2][0],r1_re, p1_re, ya1_re, t_*k_sfm, t__*k_sfm, R3, x_, np.array(distance)*k_sfm
 
+        t = L[:, 5:8]
+        xyz = []
+        for i in range(len(L)):
+            xyz.append(-np.dot(np.array(R[i]).T, t[i]))
+        l_cmp = np.zeros(len(L)-1)
+        L_cmp = 0
+        x_cmp = np.array(xyz)[:, 0]
+        y_cmp = np.array(xyz)[:, 1]
+        z_cmp = np.array(xyz)[:, 2]
+
+        for n in range(len(L)-1):
+            l_cmp[n] = np.sqrt(
+                (x_cmp[n + 1] - x_cmp[n]) ** 2 + (y_cmp[n + 1] - y_cmp[n]) ** 2 + (z_cmp[n + 1] - z_cmp[n]) ** 2)
+            L_cmp = L_cmp + l_cmp[n]
+
+        k_cmp = groundtruth[6] / L_cmp
+        y_ = np.vstack([groundtruth[0], groundtruth[1], np.zeros(len(groundtruth[0]))]).T
+        x_ = k_cmp*np.vstack([x_cmp[3:], y_cmp[3:], z_cmp[3:]]).T#colmap
+
+        x_ = x_ - x_.mean(axis=0)#genten
+        y_ = y_ - y_.mean(axis=0)
+        U, S, V = np.linalg.svd(x_.T @ y_)
+        #U, S, V = np.linalg.svd(np.diff(x_, axis=0).T @ np.diff(y_, axis=0))
+        R1 = V.T @ U.T
+        x_ = (R1 @ x_.T).T
+
+        R4 = R1 @ np.linalg.inv(R)
+        for i in range(len(L)):
+            R4[i] = R1 @ np.linalg.inv(R[i])
+    #        R4[i] = R1 @ R[i]
+            r1[i] = np.rad2deg(np.arctan2(np.array(R4[i]).T[2][1], np.array(R4[i]).T[2][2]))
+            p1[i] = np.rad2deg(-np.arcsin(np.array(R4[i]).T[2][0]))
+            ya1[i] = np.rad2deg(np.arctan2(np.array(R4[i]).T[1][0], np.array(R4[i]).T[0][0]))
+            r1_ = np.rad2deg(
+                np.arctan(2 * (q0[i] * q1[i] + q2[i] * q3[i]) / (q0[i] ** 2 - q1[i] ** 2 - q2[i] ** 2 + q3[i] ** 2)))
+            p1_ = np.rad2deg(np.arcsin(2 * (q0[i] * q2[i] - q1[i] * q3[i])))
+            ya1_ = np.rad2deg(
+                np.arctan(2 * (q0[i] * q3[i] + q2[i] * q1[i]) / (q0[i] ** 2 + q1[i] ** 2 - q2[i] ** 2 - q3[i] ** 2)))
+            eul = np.rad2deg(CalcTraj.rotationMatrixToEulerAngles(self, R4[i]))
+            r1[i] = eul[0]
+            p1[i] = eul[1]
+            ya1[i] = eul[2]
+            print([r1[i], p1[i], ya1[i], r1_, p1_, ya1_])
+            print(eul)
+
+        return x_[:, 0]-x_[:, 0][0], x_[:, 1]-x_[:, 1][0],r1-r1[0],p1-p1[0],ya1-ya1[0]
+
+
+#if __name__ == '__Init__':
+#    print(None)

@@ -34,16 +34,31 @@ class CalcGPS():
         quotient = len(CalcGPS().groundtruth[1]) // len(name_data)
         remainder = len(CalcGPS().groundtruth[1]) % len(name_data)
         est_ = [np.array(est[0]), np.array(est[1])]
-        x_ = np.vstack([est_[1][0:len(name_data)-1], est_[0][0:len(name_data)-1]]).T
+        x_ = np.vstack([est_[1], est_[0]]).T
         x_ = x_ - x_.mean(axis=0)
-        y_ = np.vstack([np.array(CalcGPS().calcCoord(self)).T[0][0:len(name_data)-1], np.array(CalcGPS().calcCoord(self)).T[1][0:len(name_data)-1]]).T
+        y_ = np.vstack([np.array(CalcGPS().calcCoord(self)).T[0], np.array(CalcGPS().calcCoord(self)).T[1]]).T
         y__ = y_ - y_.mean(axis=0)
         U, S, V = np.linalg.svd(x_.T @ y__)
         #U, S, V = np.linalg.svd(np.diff(x_, axis=0).T @ np.diff(y_, axis=0))
         R = V.T @ U.T
         coord_est = [(R @ x_.T)[0] + y_.mean(axis=0)[0], (R @ x_.T)[1] + y_.mean(axis=0)[1]]
+        
         return coord_est
     
+    def show(self):
+        coord_sfm = self.rot2coord(self, self.opensfm)
+        coord_t = self.rot2coord(self, self.gps_t)
+        coord_orb = self.rot2coord(self, self.orbslam)
+        fig, traj = plt.subplots()
+        traj.plot(coord_t[0], coord_t[1], color="black", lw=0.5, label="estimated")
+        traj.plot(coord_sfm[0], coord_sfm[1], color="red", lw=0.5, label="sfm")
+        traj.plot(coord_orb[0], coord_orb[1], color="green", lw=0.5, label="orb")
+        #traj.plot(coord_map_selected.T[1].T[0], coord_map_selected.T[1].T[1], color="red", lw=0.5, label="pre")
+        #traj.plot(coord_map_selected.T[2].T[0], coord_map_selected.T[2].T[1], color="blue", lw=0.5, label="map_extracted")
+        traj.set_aspect('equal')
+        plt.grid(True)
+        plt.show()
+
     def coord2gps_est(self, est):
         gps_est = []
         coord_est_ = CalcGPS().rot2coord(self, est)
@@ -52,22 +67,5 @@ class CalcGPS():
             gps_est.append([gps[0], gps[1]])
         #print(gps_est)
         return gps_est
-    
-    def show(self):
-        coord_sfm = self.rot2coord(self, self.opensfm)
-        coord_t = self.calcCoord(self)
-        coord_orb = self.rot2coord(self, self.orbslam)
-        fig, traj = plt.subplots()
-        print(coord_t[0])
-        traj.plot(np.array(coord_t).T[0], np.array(coord_t).T[1], color="black", lw=0.5, label="estimated")
-        traj.plot(coord_sfm[0], coord_sfm[1], color="red", lw=0.5, label="sfm")
-        traj.plot(coord_orb[0], coord_orb[1], color="green", lw=0.5, label="orb")
-        #traj.plot(coord_map_selected.T[1].T[0], coord_map_selected.T[1].T[1], color="red", lw=0.5, label="pre")
-        #traj.plot(coord_map_selected.T[2].T[0], coord_map_selected.T[2].T[1], color="blue", lw=0.5, label="map_extracted")
-        traj.set_aspect('equal')
-        traj.legend(fancybox=False, shadow=False, edgecolor='black')
-        plt.grid(True)
-        plt.show()
 
-#CalcGPS().coord2gps_est(CalcGPS().opensfm)
-#CalcGPS().show()
+CalcGPS().show()
