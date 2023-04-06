@@ -1,4 +1,4 @@
-import temp
+#import temp
 from calc_gps import CalcGPS
 from init import Init
 import numpy as np
@@ -6,8 +6,8 @@ import gps2coord, coord2gps
 from calc_traj import CalcTraj
 import matplotlib.pyplot as plt
 from optimize_traj7 import OptimizeTraj
-from extract_roadnet import Extractmap
-from temp import ExtractRoads
+#from extract_roadnet import Extractmap
+#from temp import ExtractRoads
 import folium
 import time
 import overpy
@@ -28,8 +28,11 @@ class OptimizeGPS():
         self.opensfm = CalcTraj().calcOpensfm(self.groundtruth, Init().json_file0)
         self.optimized = OptimizeTraj().calcOptimizeTraj()
         #self.road = Extractmap(extract_dist=self.EXTRACT_DIST, est=self.optimized).calcDistance()[1]
-        #self.gps_t = Init().gps_t
-        self.gps_t = np.loadtxt('exploreGPS.csv', encoding="shift_jisx0213", delimiter=',')
+        self.gps_t = Init().gps_t
+        try:
+            self.gps_t_ = np.loadtxt('exploreGPS.csv', encoding="shift_jisx0213", delimiter=',')
+        except:
+            self.gps_t_ = self.gps_t
         
 
     
@@ -93,23 +96,33 @@ class OptimizeGPS():
         y_ = y_ - y_.mean(axis=0)
         #print(y_.shape, "y_")
         try:
-            x_ = np.vstack([np.array(est)[0], np.array(est)[1]]).T
+            x_ = np.vstack([np.array(est)[1], np.array(est)[0]]).T
             x_ = x_ - x_.mean(axis=0)
-            U, S, V = np.linalg.svd(x_.T @ y_)
-            R = V.T @ U.T
+#            U1, S, V1 = np.linalg.svd(x_.T @ y_)
+            U1, S, V1T = np.linalg.svd(y_.T @ x_)
+#            R1 = V1.T @ U1.T
+            R1 = U1 @ V1T
+            R_det = np.linalg.det(R1)
+            sigma = np.array([[1, 0], [0, R_det]])
+            R_ = U1 @ sigma @ V1T
+            R_det = np.linalg.det(R_)
             
             #U, S, V = np.linalg.svd(np.diff(x_, axis=0).T @ np.diff(y_, axis=0))
         except ValueError:
 
-            x_ = np.vstack([np.array(est).T[0], np.array(est).T[1]]).T
+            x_ = np.vstack([np.array(est).T[1], np.array(est).T[0]]).T
             x_ = x_ - x_.mean(axis=0)
-            U, S, V = np.linalg.svd(x_.T @ y_)
-            R = V.T @ U.T
+#            U1, S, V1 = np.linalg.svd(x_.T @ y_)
+            U1, S, V1T = np.linalg.svd(y_.T @ x_)
+#            R1 = V1.T @ U1.T
+            R1 = U1 @ V1T
+            R_det = np.linalg.det(R1)
+            sigma = np.array([[1, 0], [0, R_det]])
+            R_ = U1 @ sigma @ V1T
+            R_det = np.linalg.det(R_)
             #U, S, V = np.linalg.svd(np.diff(x_, axis=0).T @ np.diff(y_, axis=0))
         #U, S, V = np.linalg.svd(np.diff(x_, axis=0).T @ np.diff(y_, axis=0))
-        
-        
-        coord_est = [(R @ x_.T)[0] + y__.mean(axis=0)[0], (R @ x_.T)[1] + y__.mean(axis=0)[1]]
+        coord_est = [(R_ @ x_.T)[0] + y__.mean(axis=0)[0], (R_ @ x_.T)[1] + y__.mean(axis=0)[1]]
         return coord_est
 
 
@@ -177,10 +190,11 @@ class OptimizeGPS():
 
 
     def optimizeGPS(self, est, num):
+            
         for i in range(num):
             if (i == 0):
                 #print(self.gps_t, "gps_t")
-                road_coord = self.latlon2coord(self.gps_t)
+                road_coord = self.latlon2coord(self.gps_t_)
                 #print(road_coord)
                 est_coord_rot = np.array(self.rot2coord(est, road_coord))
                 #print(est_coord_rot, "est_coord_rot")
@@ -188,11 +202,20 @@ class OptimizeGPS():
                 est_latlon_2 = est_latlon.copy()
                 #print(est_latlon_, "est_latlon")
                 
-                m = folium.Map(location=self.gps_t[0], zoom_start=20)
-                folium.PolyLine(self.gps_t, color='black', weight=2).add_to(m)
-                folium.PolyLine(est_latlon_2, color='magenta', weight=2).add_to(m)
-                m
-                m.save('output/map_gps.html')
+                #m = folium.Map(location=self.gps_t_[0], zoom_start=20)
+                #folium.PolyLine(self.gps_t_, color='black', weight=2).add_to(m)
+                #folium.PolyLine(est_latlon_2, color='magenta', weight=2).add_to(m)
+                #m
+                #m.save('output/map_gps.html')
+                
+                #map = folium.Map(location=self.gps_t_[0], zoom_start=20)
+                #for data1, data2 in zip(np.array(est_latlon_2), self.gps_t_):
+                #    folium.Circle(data2.tolist(), radius=3, color='black', fill=False).add_to(map)
+                #    folium.Circle(data1.tolist(), radius=1, color='magenta', fill=False).add_to(map)
+                #map
+                #map.save('output/i0.html')
+                #est_i0 = est_latlon_2.copy()
+                #np.save('i0_explore_list', est_i0)
                 
 
                 print("i=0 completed")
@@ -210,24 +233,26 @@ class OptimizeGPS():
                 except overpy.exception.OverpassGatewayTimeout:
                     break
                 #print("road_coord", road_coord, i)
-                est_coord_rot_ = np.array(self.rot2coord(est_coord__, road_coord))
+                est_coord_rot_ = np.array(self.rot2coord(est, road_coord))
+                
                 #print("est_coord_rot", est_coord_rot_)
                 road_gps = np.array(self.coord2gps_est(road_coord.T))
                 est_latlon_2 = np.array(self.coord2gps_est(est_coord_rot_))
                 #est_coord_ = self.latlon2coord(est_latlon_)
-                print(road_gps, "road_gps")
+                #print(road_gps, "road_gps")
                 #m = folium.Map(location=self.gps_t[0], zoom_start=20)
                 #for data in road_gps:
                 #    folium.Circle(data.tolist(), radius=0.1, color='red', fill=False).add_to(m)
                 #m
                 #m.save('output/map_road.html')
-                print(est_latlon_2, "est_latlon_",)
+                #print(est_latlon_2, "est_latlon_",)
                 print("i=", i, "completed")
-                map = folium.Map(location=self.gps_t[0], zoom_start=20)
-                folium.PolyLine(self.gps_t, color='black', weight=2).add_to(map)
-                folium.PolyLine(est_latlon_2, color='magenta', weight=2).add_to(map)
-                map
-                map.save('output/map_rotated.html')
+                #map = folium.Map(location=self.gps_t_[0], zoom_start=20)
+                #folium.PolyLine(self.gps_t_, color='black', weight=2).add_to(map)
+                #folium.PolyLine(est_latlon_2, color='magenta', weight=2).add_to(map)
+                #map
+                #map.save('output/map_rotated.html')
+                #np.save('i10_explore_list', est_latlon_2)
         return est_latlon_2, road_gps
 
 '''

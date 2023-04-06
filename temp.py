@@ -113,12 +113,13 @@ class ExtractRoads():
             
             #print(latlon)
             
-            folium.PolyLine(latlon_, color='blue', weight=1.0).add_to(m)
+            #folium.PolyLine(latlon_, color='blue', weight=1.0).add_to(m)
             for data in latlon_:
                 #print(data, "data")
 
-                folium.Circle(data.tolist(), radius=0.1, color='black', fill=False).add_to(m)
+                folium.Circle(data.tolist(), radius=1, color='blue', fill=False).add_to(m)
             #print(np.array(latlon_all), "lenlatlonall")
         m
-        m.save('output/map_out.html')
+        m.save('output/road_intered.html')
         return latlon_all
+#ExtractRoads(extract_dist=300).make_latlon_frommap()

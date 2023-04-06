@@ -29,8 +29,10 @@ class OptimizeTraj():
         self.droid = a.droid
         
         self.droidslam = Equalize().averagedSLAM(a.droid0, a.droid1, a.droid2, a.droid3, a.droid4, a.droid5, a.droid6, a.droid7, a.droid8, a.droid9, 'DROIDSLAM')
-        
         if (len(a.L) == 0):
+            self.orbslam = self.droidslam
+        
+        elif (a.L[0][0] != 0):
             self.orbslam = self.droidslam
         else:
             #self.orbslam = CalcTraj().calcOrbslam(self.groundtruth, self.L0)
@@ -170,7 +172,26 @@ class OptimizeTraj():
         #print("Q[0]=", Q_sfm[0])
         return Q_sfm, Q_slam, Q_sfm_r, Q_slam_r, Q_droid_r
 
+    def showRT(self):
+        rotateSfM = self.rotateSfM()
+        rotateDroid = self.rotateDroid()
+        RT_sfm = np.array(rotateSfM[3])
+        RT_slam_ = np.array(self.output[3])
+        RT_droid = np.array(rotateDroid[3])
 
+        time = Init().Nx
+        fig, rt = plt.subplots(figsize=(32, 8))
+
+        rt.plot(time[:], np.array(RT_sfm).T, color="red", lw=2, label="Normalized vehicle attitude from OpenSfM")
+        rt.plot(time[:], np.array(RT_slam_).T, color="green", lw=2, label="Normalized vehicle attitude from ORB-SLAM2")
+        rt.plot(time[:], np.array(RT_droid).T, color="blue", lw=2, label="Normalized vehicle attitude from DROID-SLAM")
+        rt.legend(fancybox=False, shadow=False, edgecolor='black')
+        rt.set_xlabel("Time [s]")
+        rt.set_ylabel("Normalized vehicle attitude")
+        plt.grid(True)
+        plt.savefig('output/opted/RT.png')
+        
+        
     def calcWeight(self):
         rotateSfM = self.rotateSfM()
         rotateDroid = self.rotateDroid()
@@ -240,11 +261,11 @@ class OptimizeTraj():
         for i,j in zip(self.time, list[1:]):
             if (j == 1):
                     #R_r[j-1] = np.array(Q_sfm_r[j-1])
-                    R_r[j-1] = np.array(Q_sfm_r[j-1])
-                    t[j-1] = np.array(v_slam[j-1])
-                    #R_r[j-1] = np.array(R_sfm_r[j-1])
-                    #print(R, "j==1")
+                    #t[j-1] = np.array(v_slam[j-1])
+                    R_r[j-1] = np.array(np.eye(3))
+                    t[j-1] = np.array(np.zeros(3))
             else:
+                '''
                 if (self.t_orb[0] >= i ): #self.t_orb[len(self.t_orb)-1] > i
                     if (RT_sfm[j-1] <= RT_droid[j-1]):
                     #[j-1] = np.array(Q_sfm[j-1]) @ np.array(R[j-2])
@@ -258,34 +279,22 @@ class OptimizeTraj():
                     if (RT_sfm[j-1] <= RT_droid[j-1]):
                     #R[j-1] = np.array(Q_sfm[j-1]) @ np.array(R[j-2])
                         R_r[j-1] = np.array(Q_sfm_r[j-1]) @ np.array(R_r[j-2])
-                        t[j-1] = np.array(t[j-2]) + np.array(R_sfm_r[j-1]) @ np.array(v_sfm_r[j-1])
-                    else:
-                        R_r[j-1] = np.array(Q_droid_r[j-1]) @ np.array(R_r[j-2])
-                        t[j-1] = np.array(t[j-2]) + np.array(R_r[j-1]) @ np.array(v_droid[j-1])
-                else:
-                    if (RT_sfm[j-1] <= RT_slam[j-1] and RT_sfm[j-1] <= RT_droid[j-1]):
-                        #R[j-1] = np.array(Q_sfm[j-1]) @ np.array(R[j-2])
-                        R_r[j-1] = np.array(Q_sfm_r[j-1]) @ np.array(R_r[j-2])
                         t[j-1] = np.array(t[j-2]) + np.array(R_r[j-1]) @ np.array(v_sfm_r[j-1])
-                    elif (RT_droid[j-1] <= RT_slam[j-1] and RT_droid[j-1] <= RT_sfm[j-1]):
+                    else:
                         R_r[j-1] = np.array(Q_droid_r[j-1]) @ np.array(R_r[j-2])
                         t[j-1] = np.array(t[j-2]) + np.array(R_r[j-1]) @ np.array(v_droid[j-1])
-                    else:
-                        #R[j-1] = np.array(Q_slam[j-1]) @ np.array(R[j-2])
-                        R_r[j-1] = np.array(Q_slam_r[j-1]) @ np.array(R_r[j-2])
-                        t[j-1] = np.array(t[j-2]) + np.array(R_r[j-1]) @ np.array(v_slam[j-1])
-                #elif (self.t_orb[len(self.t_orb)-1] > i):
-                #    if (RT_sfm[j-1] < RT_slam[j-1] and RT_sfm[j-1] < RT_droid[j-1]):
-                #        #R[j-1] = np.array(Q_sfm[j-1]) @ np.array(R[j-2])
-                #        R_r[j-1] = np.array(Q_sfm_r[j-1]) @ np.array(R_r[j-2])
-                #        t[j-1] = np.array(t[j-2]) + np.array(R_sfm_r[j-1]) @ np.array(v_sfm_r[j-1])
-                #    elif (RT_droid[j-1] < RT_slam[j-1] and RT_droid[j-1] < RT_sfm[j-1]):
-                #        R_r[j-1] = np.array(Q_droid_r[j-1]) @ np.array(R_r[j-2])
-                #        t[j-1] = np.array(t[j-2]) + np.array(R_droid_r[j-1]) @ np.array(v_droid[j-1])
-                #    else:
-                #        #R[j-1] = np.array(Q_slam[j-1]) @ np.array(R[j-2])
-                #        R_r[j-1] = np.array(Q_slam_r[j-1]) @ np.array(R_r[j-2])
-                #        t[j-1] = np.array(t[j-2]) + np.array(R_slam_r[j-1]) @ np.array(v_slam[j-1])
+                
+                else:
+                '''
+                if (RT_slam[j-1] < RT_sfm[j-1] and RT_slam[j-1] < RT_droid[j-1]):
+                    R_r[j-1] = np.array(Q_slam_r[j-1]) @ np.array(R_r[j-2])
+                    t[j-1] = np.array(t[j-2]) + np.array(R_r[j-1]) @ np.array(v_slam[j-1])
+                elif (RT_droid[j-1] <= RT_slam[j-1] and RT_droid[j-1] <= RT_sfm[j-1]):
+                    R_r[j-1] = np.array(Q_droid_r[j-1]) @ np.array(R_r[j-2])
+                    t[j-1] = np.array(t[j-2]) + np.array(R_r[j-1]) @ np.array(v_droid[j-1])
+                else:
+                    R_r[j-1] = np.array(Q_sfm_r[j-1]) @ np.array(R_r[j-2])
+                    t[j-1] = np.array(t[j-2]) + np.array(R_r[j-1]) @ np.array(v_sfm_r[j-1])
                     
         #print(R_r[0])
         #print(v_sfm_r, v_slam)
@@ -295,7 +304,7 @@ class OptimizeTraj():
         xyz_opt = []
         opt = self.calcWeight()
         R_opt = opt[0]
-        t_opt = opt[1]
+        t_opt = np.array(opt[1])
         for i in range(len(self.time)):
             #xyz_opt.append(-np.dot(np.array(R_opt[i]).T, np.array(t_opt[i])))
             xyz_opt.append(np.array(t_opt[i]))
@@ -326,8 +335,17 @@ class OptimizeTraj():
             p1[i] = -eul[1]
             ya1[i] = -eul[2]
         
+        l_sfm = np.zeros(len(self.time)-1)
+        L_sfm = 0
+        distance = []
 
-        return np.array(xyz_opt)[:, 0], np.array(xyz_opt)[:, 1], np.array(xyz_opt)[:, 2],r1, p1,ya1
+        for n in range(len(self.time)-1):
+            l_sfm[n] = np.sqrt(
+                (t_opt.T[0][n + 1] - t_opt.T[0][n]) ** 2 + (t_opt.T[1][n + 1] - t_opt.T[1][n]) ** 2 + (t_opt.T[2][n + 1] - t_opt.T[2][n]) ** 2)
+            L_sfm = L_sfm + l_sfm[n]
+            distance.append(L_sfm)
+        k_sfm = self.groundtruth[0] / L_sfm
+        return np.array(xyz_opt)[:, 0]*k_sfm, np.array(xyz_opt)[:, 1]*k_sfm, np.array(xyz_opt)[:, 2]*k_sfm,r1, p1,ya1, np.array(distance)*k_sfm
     
     
     

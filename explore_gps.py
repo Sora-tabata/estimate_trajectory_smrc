@@ -36,8 +36,8 @@ class ExploreGPS():
         coord_scattered = []
         coord_scattered_ = []
         coord_scattered_all = []
-        dist_x = np.arange(-10, 10, 5)
-        dist_y = np.arange(-10, 10, 5)
+        dist_x = np.arange(-100, 100, 10)
+        dist_y = np.arange(-100, 100, 10)
 
         for dx in dist_x:
             for dy in dist_y:
@@ -101,8 +101,26 @@ class ExploreGPS():
             map_selected = self.calcDistance(coord_scattered[i])
             dist.append(self.calcDistance_max(map_selected, coord_scattered[i]))
             print(i, coord_scattered.index)
-        plt.hist(dist)
+        np.save('output/dist', np.array(dist))
+        plt.rcParams['font.family'] = 'Times New Roman'
+        fig = plt.figure()
+        ax = fig.add_subplot(1,1,1)
+        plt.rcParams['font.family'] = 'Times New Roman'
+        ax.hist(dist, bins=30)
+        ax.set_title('Distribution of trajectories searched for multiple points')
+        ax.set_xlabel('Average distance to road network point cloud')
+        ax.set_ylabel('The number of trajectories')
+        fig.savefig('output/hist.png')
+        plt.savefig('output/histgram.png')
+        #fig.show()
+        '''
+        fig, hist = plt.subplots()
+        labels = ['The number of trajectory']
+        plt.hist(dist, label=labels)
+        plt.grid(True)
+        plt.legend(fancybox=False, shadow=False, edgecolor='black')
         plt.savefig('histgram.png')
+        '''
 
         index_threshold = []
         for i in dist:
@@ -122,15 +140,18 @@ class ExploreGPS():
         coord_selected = coord_selected_[min_index_]
         #print(self.coord2gps(coord_selected))
         #print(self.gps_t)
-        m = folium.Map(location=self.gps_t[0], zoom_start=20)
-        folium.PolyLine(self.gps_t, color='black', weight=3.0).add_to(m)
-        folium.PolyLine(np.array(self.coord2gps(coord_selected)).tolist(), color='red', weight=3.0).add_to(m)
-        for i in range(len(coord_selected_)):
+        #m = folium.Map(location=self.gps_t[0], zoom_start=20)
+        #for data in self.gps_t:
+        #    folium.Circle(data.tolist(), radius=2, color='black', fill=False).add_to(m)
+        #folium.PolyLine(self.gps_t, color='black', weight=3.0).add_to(m)
+        
+        #for i in range(len(coord_selected_)):
             #if(i % 3 == 0):
                 #folium.PolyLine(np.array(self.coord2gps(coord_scattered[i])).tolist(), color='blue', weight=1.0).add_to(m)
-                folium.PolyLine(np.array(self.coord2gps(coord_selected_[i])).tolist(), color='blue', weight=1.0).add_to(m)
-        m
-        m.save('output/map_explore.html')
-        return np.array(self.coord2gps(coord_selected))
+        #        folium.PolyLine(np.array(self.coord2gps(coord_selected_[i])).tolist(), color='blue', weight=1.0).add_to(m)
+        #folium.PolyLine(np.array(self.coord2gps(coord_selected)).tolist(), color='red', weight=4.0).add_to(m)
+        #m
+        #m.save('output/explore_threshold_1.5.html')
+        return np.array(self.coord2gps(coord_selected)), coord_selected_, coord_selected
 
 #print(ExploreGPS().explore_gps(1.2))

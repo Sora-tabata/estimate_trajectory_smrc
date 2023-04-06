@@ -4,6 +4,7 @@ from init import Init
 from optimize_traj7 import OptimizeTraj
 from optimize_gps import OptimizeGPS
 import folium
+import sys
 
 class SaveData():
     def __init__(self):
@@ -19,8 +20,19 @@ class SaveData():
         self.optimized = OptimizeTraj().calcOptimizeTraj()
         
         self.optimized_gps_2 = np.array(OptimizeGPS(extract_dist=300).optimizeGPS(self.optimized, 2)[0])
-        self.optimized_gps = np.array(OptimizeGPS(extract_dist=300).optimizeGPS(self.optimized,10)[0])
         
+        args = sys.argv
+        tra = args[1]
+        if (tra == 'orb'):
+            self.optimized_gps = np.array(OptimizeGPS(extract_dist=300).optimizeGPS(self.orbslam,10)[0])
+        elif (tra == 'droid'):
+            self.optimized_gps = np.array(OptimizeGPS(extract_dist=300).optimizeGPS(self.droidslam,10)[0])
+        elif (tra == 'sfm'):
+            self.optimized_gps = np.array(OptimizeGPS(extract_dist=300).optimizeGPS(self.opensfm,10)[0])
+        elif (tra == 'optimized'):
+            self.optimized_gps = np.array(OptimizeGPS(extract_dist=300).optimizeGPS(self.optimized,10)[0])
+        else:
+            print("Please input correct command orb, droid, sfm or optimized")
         #self.optimized_gps_orb = np.array(OptimizeGPS(extract_dist=200).optimizeGPS(self.orbslam, 2)[0])
         #self.optimized_gps_sfm = np.array(OptimizeGPS(extract_dist=200).optimizeGPS(self.opensfm, 2)[0])
         self.gps_t = Init().gps_t
@@ -38,13 +50,13 @@ class SaveData():
         data = np.vstack([self.optimized_gps.T[0], self.optimized_gps.T[1]]).T
         data_10 = np.vstack([self.optimized_gps_2.T[0], self.optimized_gps_2.T[1]]).T
         np.savetxt("optimizedGPS.csv", data, delimiter=",")
-        m = folium.Map(location=self.gps_t[0], zoom_start=20)
-        for data1, data2 ,data3, in zip(np.array(self.optimized_gps), self.gps_t, np.array(self.optimized_gps_2)):
-            folium.Circle(data2.tolist(), radius=2, color='black', fill=False).add_to(m)
-            folium.Circle(data1.tolist(), radius=1, color='magenta', fill=False).add_to(m)
-            folium.Circle(data3.tolist(), radius=1, color='orange', fill=False).add_to(m)
-        m
-        m.save('output/map_smrc.html')
+        #m = folium.Map(location=self.gps_t[0], zoom_start=20)
+        #for data1, data2 ,data3, in zip(np.array(self.optimized_gps), self.gps_t, np.array(self.optimized_gps_2)):
+        #    folium.Circle(data2.tolist(), radius=2, color='black', fill=False).add_to(m)
+        #    folium.Circle(data1.tolist(), radius=1, color='magenta', fill=False).add_to(m)
+        #    folium.Circle(data3.tolist(), radius=1, color='orange', fill=False).add_to(m)
+        #m
+        #m.save('output/map_smrc.html')
 
     def saveData_toAka(self):
         data = np.vstack([self.road_gps.T[0], self.road_gps.T[1]]).T

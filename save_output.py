@@ -2,37 +2,44 @@ import numpy as np
 from calc_traj import CalcTraj
 from init import Init
 from optimize_traj7 import OptimizeTraj
-from optimize_gps import OptimizeGPS
-import folium
+from equalize_est import Equalize
 
 class SaveData():
     def __init__(self):
+        a = Init()
         self.groundtruth = CalcTraj().calcGroundTruth(Init().N0, Init().M0)
-        self.L0 = Init().L0
-        self.droid = Init().droid
-        self.droidslam = CalcTraj().calcDroidslam(self.groundtruth, self.droid)
-        if (len(self.L0) == 0):
+        self.L0 = a.L0
+        self.droid = a.droid
+        self.droidslam = Equalize().averagedSLAM(a.droid0, a.droid1, a.droid2, a.droid3, a.droid4, a.droid5, a.droid6, a.droid7, a.droid8, a.droid9, 'DROIDSLAM')
+        if (len(Init().L0) == 0):
+            self.orbslam = self.droidslam
+        elif (Init().L[0][0] != 0):
             self.orbslam = self.droidslam
         else:
-            self.orbslam = CalcTraj().calcOrbslam(self.groundtruth, self.L0)
+            self.orbslam = Equalize().averagedSLAM(a.L0, a.L1, a.L2, a.L3, a.L4, a.L5, a.L6, a.L7, a.L8, a.L9, 'ORBSLAM')
         self.opensfm = CalcTraj().calcOpensfm(self.groundtruth, Init().json_file0)
         self.optimized = OptimizeTraj().calcOptimizeTraj()
-        
-        self.optimized_gps_2 = np.array(OptimizeGPS(extract_dist=300).optimizeGPS(self.optimized, 2)[0])
-        self.optimized_gps = np.array(OptimizeGPS(extract_dist=300).optimizeGPS(self.optimized,10)[0])
-        
-        #self.optimized_gps_orb = np.array(OptimizeGPS(extract_dist=200).optimizeGPS(self.orbslam, 2)[0])
-        #self.optimized_gps_sfm = np.array(OptimizeGPS(extract_dist=200).optimizeGPS(self.opensfm, 2)[0])
-        self.gps_t = Init().gps_t
-        #self.road_gps = np.array(OptimizeGPS(extract_dist=200).optimizeGPS(self.optimized, 2)[1])
 
 
-    def saveData_toRyuchi(self):
+    def saveData_orbslam(self):
         #data = np.vstack([self.opensfm[1], self.opensfm[0], self.opensfm[2], self.opensfm[3], self.opensfm[4]]).T
-        #print(len(self.optimized[1]))
-        #print(len(self.optimized[3][1:]))
+        data = np.vstack([self.orbslam[0], self.orbslam[1], self.orbslam[3][:], self.orbslam[4][:], self.orbslam[5][:]]).T
+        np.savetxt("output_orbslam.csv", data, delimiter=",")
+    
+    def saveData_opensfm(self):
+        #data = np.vstack([self.opensfm[1], self.opensfm[0], self.opensfm[2], self.opensfm[3], self.opensfm[4]]).T
+        data = np.vstack([self.opensfm[0], self.opensfm[1], self.opensfm[2][:], self.opensfm[3][:], self.opensfm[4][:]]).T
+        np.savetxt("output_opensfm.csv", data, delimiter=",")
+
+    def saveData_droidslam(self):
+        #data = np.vstack([self.opensfm[1], self.opensfm[0], self.opensfm[2], self.opensfm[3], self.opensfm[4]]).T
+        data = np.vstack([self.droidslam[0], self.droidslam[1], self.droidslam[3][:], self.droidslam[4][:], self.droidslam[5][:]]).T
+        np.savetxt("output_droidslam.csv", data, delimiter=",")
+    
+    def saveData_optimized(self):
+        #data = np.vstack([self.opensfm[1], self.opensfm[0], self.opensfm[2], self.opensfm[3], self.opensfm[4]]).T
         data = np.vstack([self.optimized[0], self.optimized[1], self.optimized[3][:], self.optimized[4][:], self.optimized[5][:]]).T
-        np.savetxt("data.csv", data, delimiter=",")
+        np.savetxt("output_optimized.csv", data, delimiter=",")
 
     def saveData_gps(self):
         data = np.vstack([self.optimized_gps.T[0], self.optimized_gps.T[1]]).T
@@ -63,8 +70,11 @@ class SaveData():
         data3 = np.vstack([self.opensfm[4], self.opensfm[3], self.opensfm[2], self.opensfm[0], self.opensfm[1], self.opensfm[9], self.optimized_gps_sfm.T[0], self.optimized_gps_sfm.T[1]]).T
         np.savetxt("final_output_sfm.csv", data3, delimiter=",")
 
-#SaveData().saveData_toRyuchi()
-SaveData().saveData_gps()
+SaveData().saveData_orbslam()
+SaveData().saveData_opensfm()
+SaveData().saveData_droidslam()
+SaveData().saveData_optimized()
+#SaveData().saveData_gps()
 #SaveData().saveData_FinalOutput()
 #SaveData().saveData_toAka()
 #SaveData().saveData_FinalOutput_orb()

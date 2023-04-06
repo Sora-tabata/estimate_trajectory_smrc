@@ -89,6 +89,8 @@ class Equalize():
         for data in [a, b, c, d, e, f, g, h, i, j]:
             if(len(data) == 0):
                 continue
+            #elif (slam == 'ORBSLAM' and data[0][0] != 0):
+            #    continue
             else:
                 L.append(data.tolist())
         output_all = []
@@ -98,28 +100,70 @@ class Equalize():
         roll = []
         pitch = []
         yaw = []
+        x_diff_ = []
+        y_diff_ = []
+        z_diff_ = []
+        roll_diff_ = []
+        pitch_diff_ = []
+        yaw_diff_ = []
         #print(len(Init().L) == 0)
         for i in range(len(L)):
             if (slam == 'DROIDSLAM'):
                 orbslam = CalcTraj().calcDroidslam(self.groundtruth, np.array(L[i]))
             elif (len(Init().L) == 0):
                 orbslam = CalcTraj().calcDroidslam(self.groundtruth, np.array(L[i]))
+            #elif (Init().L[0][0] != 0):
+            #    orbslam = CalcTraj().calcDroidslam(self.groundtruth, np.array(L[i]))
             else:
                 orbslam = CalcTraj().calcOrbslam(self.groundtruth, np.array(L[i]))
+            x_diff = []
+            y_diff = []
+            z_diff = []
+            roll_diff = []
+            pitch_diff = []
+            yaw_diff = []
+            
+            for j in range(self.n_frame):
+                if (j == 0):
+                    x_diff.append(0)
+                    y_diff.append(0)
+                    z_diff.append(0)
+                    roll_diff.append(0)
+                    pitch_diff.append(0)
+                    yaw_diff.append(0)
+                else:
+                    x_diff.append(orbslam[0][j] - orbslam[0][j-1])
+                    y_diff.append(orbslam[1][j] - orbslam[1][j-1])
+                    z_diff.append(orbslam[2][j] - orbslam[2][j-1])
+                    roll_diff.append(orbslam[3][j] - orbslam[3][j-1])
+                    pitch_diff.append(orbslam[4][j] - orbslam[4][j-1])
+                    yaw_diff.append(orbslam[5][j] - orbslam[5][j-1])
+            #print(np.array(x_diff).shape)
+            x_diff_.append(x_diff)
+            y_diff_.append(y_diff)
+            z_diff_.append(z_diff)
+            roll_diff_.append(roll_diff)
+            pitch_diff_.append(pitch_diff)
+            yaw_diff_.append(yaw_diff)
             x.append(orbslam[0])
             y.append(orbslam[1])
             z.append(orbslam[2])
             roll.append(orbslam[3])
             pitch.append(orbslam[4])
             yaw.append(orbslam[5])
-        
-        
         x_ave = []
         y_ave = []
         z_ave = []
         roll_ave = []
         pitch_ave = []
         yaw_ave = []
+        x_diff_ave = []
+        y_diff_ave = []
+        z_diff_ave = []
+        roll_diff_ave = []
+        pitch_diff_ave = []
+        yaw_diff_ave = []
+        #print(np.array(x).shape, np.array(x_diff_).shape)
         for i in range(self.n_frame):
             x_ave.append(np.median(np.array(x).T[i]))
             y_ave.append(np.median(np.array(y).T[i]))
@@ -127,8 +171,21 @@ class Equalize():
             roll_ave.append(np.median(np.array(roll).T[i]))
             pitch_ave.append(np.median(np.array(pitch).T[i]))
             yaw_ave.append(np.median(np.array(yaw).T[i]))
-        
-        return x_ave, y_ave, z_ave, roll_ave, pitch_ave, yaw_ave
+            x_diff_ave.append(np.median(np.array(x_diff_).T[i]))
+            y_diff_ave.append(np.median(np.array(y_diff_).T[i]))
+            z_diff_ave.append(np.median(np.array(z_diff_).T[i]))
+            roll_diff_ave.append(np.median(np.array(roll_diff_).T[i]))
+            pitch_diff_ave.append(np.median(np.array(pitch_diff_).T[i]))
+            yaw_diff_ave.append(np.median(np.array(yaw_diff_).T[i]))
+        #print(np.array(x_diff_ave).shape)
+        x_ave_ = np.cumsum(np.array(x_diff_ave))
+        y_ave_ = np.cumsum(np.array(y_diff_ave))
+        z_ave_ = np.cumsum(np.array(z_diff_ave))
+        roll_ave_ = np.cumsum(np.array(roll_diff_ave))
+        pitch_ave_ = np.cumsum(np.array(pitch_diff_ave))
+        yaw_ave_ = np.cumsum(np.array(yaw_diff_ave))
+        #x_ave, y_ave, z_ave, roll_ave, pitch_ave, yaw_ave
+        return x_ave_, y_ave_, z_ave_, roll_ave_, pitch_ave_, yaw_ave_
 
 
     def equalizeORBSLAM(self):

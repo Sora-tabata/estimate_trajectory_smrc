@@ -5,18 +5,11 @@ import os
 
 ORIGINAL_FILE_DIR = "images/"
 MASK_FILE_DIR = "pred_mask/"
-OUTPUT_FILE_DIR = "masks/"
+OUTPUT_FILE_DIR = "hoods/"
 
 def createMask():
     mask = np.array(Image.open(path))
     buil = np.ones_like(mask)
-    buil[mask == 1] = 0
-    buil[mask == 2] = 0
-    buil[mask == 3] = 0
-    buil[mask == 4] = 0
-    buil[mask == 5] = 0
-    buil[mask == 8] = 0
-    buil[mask == 15] = 0
     buil[mask == 30] = 0
     return buil*255
 

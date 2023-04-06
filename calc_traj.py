@@ -126,7 +126,7 @@ class CalcTraj():
         x_vf = x_re * k_v
         y_vf = y_re * k_v
         z_vf = z_re * k_v
-        return y_vf-y_vf[0], x_vf-x_vf[0], z_vf-z_vf[0], r1_re, p1_re, ya1_re, t_orb, x_re, y_re, z_re, k_v, np.array(distance)*k_v
+        return y_vf, x_vf, z_vf, r1_re, p1_re, ya1_re, t_orb, x_re, y_re, z_re, k_v, np.array(distance)*k_v, y_vf-y_vf[0], x_vf-x_vf[0], z_vf-z_vf[0]
 
     @staticmethod
     def rotationMatrixToEulerAngles(self, R):
@@ -186,6 +186,7 @@ class CalcTraj():
         L_sfm = 0
         distance = []
 
+
         for n in range(len(name_data)-1):
             l_sfm[n] = np.sqrt(
                 (x_sfm[n + 1] - x_sfm[n]) ** 2 + (y_sfm[n + 1] - y_sfm[n]) ** 2 + (z_sfm[n + 1] - z_sfm[n]) ** 2)
@@ -195,7 +196,7 @@ class CalcTraj():
         #y_ = np.vstack([groundtruth[2], groundtruth[3], groundtruth[4]]).T
         x_ = k_sfm*np.vstack([x_sfm[:], y_sfm[:], z_sfm[:]]).T  # colmap
 
-        x_ = x_ - x_.mean(axis=0)  # genten
+        #x_ = x_ - x_.mean(axis=0)  # genten
         #y_ = y_ - y_.mean(axis=0)
         #U, S, V = np.linalg.svd(x_.T @ y_)
         #U, S, V = np.linalg.svd(np.diff(np.diff(x_, axis=0), axis=0).T @ y_)
@@ -213,7 +214,7 @@ class CalcTraj():
             p1[i] = eul[1] - 180
             ya1[i] = -eul[2]
         R_ = []
-        return x_[:, 0]-x_[:, 0][0], x_[:, 1]-x_[:, 1][0], r1, p1+90,ya1, t*k_sfm, R3,k_sfm*np.array(xyz), R_, x_[:, 2]-x_[:, 2][0], np.array(distance)*k_sfm
+        return x_[:, 0], x_[:, 1], r1, p1+90,ya1, t*k_sfm, R3,k_sfm*np.array(xyz), R_, x_[:, 2], np.array(distance)*k_sfm, x_[:, 0]-x_[:, 0][0], x_[:, 1]-x_[:, 1][0], x_[:, 2]-x_[:, 2][0]
 
     
     def calcDroidslam(self, groundtruth, L):
@@ -301,5 +302,5 @@ class CalcTraj():
         r1_re = -f1(time)
         ya1_re = f3(time)
         p1_re = -f2(time)
-        return -(x_[:, 0]-x_[:, 0][0]), x_[:, 1]-x_[:, 1][0], x_[:, 2]-x_[:, 2][0],r1_re, p1_re, ya1_re, t_*k_sfm, t__*k_sfm, R3, x_, np.array(distance)*k_sfm
+        return -(x_[:, 0]), x_[:, 1], x_[:, 2],r1_re, p1_re, ya1_re, t_*k_sfm, t__*k_sfm, R3, x_, np.array(distance)*k_sfm, -(x_[:, 0]-x_[:, 0][0]), x_[:, 1]-x_[:, 1][0], x_[:, 2]-x_[:, 2][0]
 

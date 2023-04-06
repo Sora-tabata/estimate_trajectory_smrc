@@ -1,11 +1,14 @@
 import numpy as np
 import glob
 from scipy import interpolate
+import pandas as pd
 
 class Init():
     def __init__(self):
         self.N0 = np.loadtxt(glob.glob('estimated_*')[0], encoding="shift-jis", delimiter=',', skiprows=1, usecols=[1])
         self.M0 = np.loadtxt(glob.glob('ID*')[0], encoding="shift_jisx0213", delimiter=',', skiprows=1, usecols=[6, 7, 8])
+        self.fps = pd.read_csv(glob.glob('ID*')[0]).iloc[0, 14]
+        self.camName = pd.read_csv(glob.glob('ID*')[0]).iloc[0, 13]
         self.gps_t_ = np.loadtxt(glob.glob('ID*')[0], encoding="shift_jisx0213", delimiter=',', skiprows=1, usecols=[4, 5])
         self.n_frame = len(glob.glob("images/*.jpg"))
         index = np.where(self.gps_t_.T[0] != 0)[0]
@@ -20,10 +23,8 @@ class Init():
         self.json_file0 = open('reconstruction.json', 'r')
         
         self.len_groundtruth = len(np.loadtxt(glob.glob('ID*')[0], encoding="shift_jisx0213", delimiter=',', skiprows=1, usecols=[4])) #ここを変更
-        self.time_groundtruth = np.arange(self.len_groundtruth)*(1/14) #ここを変更
-        self.Nx  = np.arange(self.n_frame)*(1/14)
-        #self.day = np.loadtxt(glob.glob('ID*')[0], encoding="shift-jis", dtype="unicode", delimiter=',', skiprows=2, usecols=[27])[0].replace('/', '-')
-        #self.time = np.loadtxt(glob.glob('ID*')[0], encoding="shift-jis", dtype="unicode", delimiter=',', skiprows=2, usecols=[16, 17, 18, 19])
+        self.time_groundtruth = np.arange(self.len_groundtruth)*(1/self.fps) 
+        self.Nx  = np.arange(self.n_frame)*(1/self.fps)
         self.droid = np.vstack([np.load('tstamps.npy').T, np.load('poses.npy').T]).T
 
         self.L0 = np.loadtxt('OUTPUT_ORBSLAM/0.txt', delimiter=' ')
